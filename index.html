@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Claude Portfolio Terminal</title>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@700;800&display=swap" rel="stylesheet"/>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{background:#050a12;color:#e8edf5;font-family:'Space Mono',monospace;min-height:100vh;padding:16px}
+
+    /* ── Header ── */
+    .header{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:1px solid #1a2540;padding-bottom:14px;margin-bottom:16px}
+    .brand{font-family:'Syne',sans-serif;font-size:clamp(13px,3vw,19px);font-weight:800;color:#3d80ff;letter-spacing:3px}
+    .sub{font-size:clamp(7px,1.8vw,9px);color:#3a4a6a;margin-top:4px;letter-spacing:1px}
+    .live-badge{display:flex;align-items:center;gap:6px;font-size:10px;color:#00e676;letter-spacing:2px;font-weight:700;white-space:nowrap}
+    .live-badge.closed{color:#f59e0b}
+    .pdot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#00e676;animation:pd 1.4s ease-in-out infinite}
+    .pdot.closed{background:#f59e0b;animation:none;opacity:.7}
+    @keyframes pd{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.7)}}
+
+    /* ── Summary ── */
+    .sum-row{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px}
+    @media(max-width:600px){.sum-row{grid-template-columns:repeat(2,1fr)}}
+    .sum-card{background:#0d1526;border:1px solid #1a2540;border-radius:8px;padding:12px 14px}
+    .sum-label{font-size:clamp(7px,1.8vw,9px);color:#3a4a6a;letter-spacing:2px;margin-bottom:5px}
+    .sum-value{font-family:'Syne',sans-serif;font-weight:700;margin-bottom:3px}
+    .sum-sub{font-size:11px}
+
+    /* ── Tabs ── */
+    .tab-row{display:flex;gap:4px;margin-bottom:12px;overflow-x:auto;padding-bottom:2px}
+    .tab-row::-webkit-scrollbar{height:2px}
+    .tab-row::-webkit-scrollbar-track{background:#1a2540}
+    .tab-row::-webkit-scrollbar-thumb{background:#3d80ff}
+    .tab-btn{background:#0d1526;border:1px solid #1a2540;border-radius:6px;padding:7px 14px;font-size:9px;color:#6b7fa0;cursor:pointer;letter-spacing:2px;font-family:'Space Mono',monospace;white-space:nowrap;transition:all .2s}
+    .tab-btn.active{background:#1a2540;color:#3d80ff;border-color:#3d80ff}
+    .tab-pane{display:none}
+    .tab-pane.active{display:block}
+
+    /* ── Position Cards ── */
+    .pos-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+    @media(max-width:600px){.pos-grid{grid-template-columns:1fr}}
+    .pos-card{background:#0d1526;border:1px solid #1a2540;border-radius:10px;padding:14px;position:relative;overflow:hidden;transition:box-shadow .2s,transform .2s}
+    .pos-card:hover{box-shadow:0 0 0 1px rgba(61,128,255,.35);transform:translateY(-1px)}
+    .pos-flash{position:absolute;inset:0;pointer-events:none;border-radius:10px;transition:background .5s}
+    .pos-top{display:flex;justify-content:space-between;margin-bottom:8px}
+    .ticker{font-family:'Syne',sans-serif;font-size:22px;font-weight:800}
+    .pos-name{font-size:9px;color:#6b7fa0;margin-top:2px}
+    .cur-price{font-family:'Syne',sans-serif;font-size:18px;font-weight:700;text-align:right}
+    .cur-pct{font-size:11px;text-align:right;margin-top:2px}
+    .badge-row{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+    .badge{display:inline-block;font-size:8px;padding:2px 8px;background:#111d35;border:1px solid #1a2540;border-radius:4px;color:#6b7fa0;letter-spacing:1px}
+    .stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:10px}
+    .stat-label{font-size:8px;color:#3a4a6a;letter-spacing:1px;margin-bottom:3px}
+    .stat-val{font-size:11px}
+    .thesis{font-size:9px;color:#3a4a6a;line-height:1.6;border-top:1px solid #1a2540;padding-top:8px}
+
+    /* ── Allocation ── */
+    .alloc-card{background:#0d1526;border:1px solid #1a2540;border-radius:8px;padding:16px}
+    .alloc-note{font-size:9px;color:#f59e0b;margin-bottom:16px;padding:7px 10px;background:rgba(245,158,11,.06);border-radius:4px;border:1px solid rgba(245,158,11,.2);line-height:1.5}
+    .alloc-row{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+    .alloc-ticker{width:52px;font-size:11px;font-weight:700;letter-spacing:1px}
+    .bar-track{flex:1;height:5px;background:#1a2540;border-radius:3px;overflow:hidden}
+    .bar-fill{height:100%;border-radius:3px;width:0;transition:width 1s ease}
+    .alloc-pct{width:30px;text-align:right;font-size:10px;color:#6b7fa0}
+    .alloc-amt{width:40px;text-align:right;font-size:10px;color:#3a4a6a}
+
+    /* ── Trade Log ── */
+    .tl-note{font-size:9px;color:#6b7fa0;margin-bottom:14px;padding:7px 10px;background:#111d35;border-radius:4px;line-height:1.5}
+    .tl-row{margin-bottom:14px;padding-left:12px;padding-bottom:14px;border-bottom:1px solid #111d35;border-left:3px solid transparent}
+    .tl-top{display:flex;align-items:center;gap:10px;margin-bottom:6px;flex-wrap:wrap}
+    .tl-type{font-size:9px;font-weight:700;letter-spacing:2px}
+    .tl-ticker{font-size:11px;color:#e8edf5;font-weight:700}
+    .tl-date{font-size:9px;color:#3a4a6a;margin-left:auto}
+    .tl-action{font-size:10px;color:#6b7fa0;line-height:1.6}
+    .tl-footer{font-size:9px;color:#3a4a6a;margin-top:12px;padding-top:12px;border-top:1px solid #1a2540;line-height:1.6}
+
+    /* ── Rules ── */
+    .rules-grid{display:grid;grid-template-columns:repeat(3,1fr)}
+    @media(max-width:500px){.rules-grid{grid-template-columns:repeat(2,1fr)}}
+    .rule-item{padding:10px 12px;border-right:1px solid #1a2540;border-bottom:1px solid #1a2540}
+    .rule-key{font-size:8px;color:#3a4a6a;letter-spacing:2px;margin-bottom:5px}
+    .rule-val{font-size:10px;color:#e8edf5;line-height:1.4}
+
+    /* ── Footer ── */
+    .footer{text-align:center;font-size:8px;color:#2a3a5a;letter-spacing:1px;margin-top:16px;padding-top:12px;border-top:1px solid #111d35}
+
+    /* ── Helpers ── */
+    .green{color:#00e676} .red{color:#ff3b30} .gold{color:#f59e0b} .blue{color:#3d80ff}
+    .card{background:#0d1526;border:1px solid #1a2540;border-radius:8px;padding:16px}
+  </style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div>
+    <div class="brand">CLAUDE PORTFOLIO TERMINAL</div>
+    <div class="sub">OPENS MAY 19, 2026 &nbsp;·&nbsp; AGGRESSIVE &nbsp;·&nbsp; MEDIUM-TERM &nbsp;·&nbsp; SIMULATION</div>
+  </div>
+  <div class="live-badge" id="market-badge"><span class="pdot" id="market-dot"></span><span id="market-label">LIVE SIM</span></div>
+</div>
+
+<!-- SUMMARY -->
+<div class="sum-row">
+  <div class="sum-card">
+    <div class="sum-label">PORTFOLIO VALUE</div>
+    <div class="sum-value" id="s-total" style="font-size:clamp(18px,4vw,26px)">$1,000.00</div>
+    <div class="sum-sub" id="s-pnl-abs">+$0.00</div>
+  </div>
+  <div class="sum-card">
+    <div class="sum-label">TOTAL P&L</div>
+    <div class="sum-value" id="s-pnl-val" style="font-size:clamp(16px,3.5vw,22px)">+$0.00</div>
+    <div class="sum-sub" id="s-pnl-pct">+0.00%</div>
+  </div>
+  <div class="sum-card">
+    <div class="sum-label">DEPLOYED</div>
+    <div class="sum-value" id="s-deployed" style="font-size:clamp(16px,3.5vw,22px);color:#e8edf5">$800.00</div>
+    <div class="sum-sub" style="color:#6b7fa0">80% &nbsp;·&nbsp; 4 positions</div>
+  </div>
+  <div class="sum-card">
+    <div class="sum-label">CASH RESERVE</div>
+    <div class="sum-value" style="font-size:clamp(16px,3.5vw,22px);color:#e8edf5">$200.00</div>
+    <div class="sum-sub" style="color:#f59e0b">dry powder &nbsp;·&nbsp; 20% ⬆</div>
+  </div>
+</div>
+
+<!-- TABS -->
+<div class="tab-row">
+  <button class="tab-btn active" onclick="switchTab('positions')">POSITIONS</button>
+  <button class="tab-btn" onclick="switchTab('allocation')">ALLOCATION</button>
+  <button class="tab-btn" onclick="switchTab('tradelog')">TRADE LOG</button>
+  <button class="tab-btn" onclick="switchTab('rules')">RULES</button>
+</div>
+
+<!-- TAB: POSITIONS -->
+<div id="tab-positions" class="tab-pane active">
+  <div class="pos-grid" id="pos-grid"></div>
+</div>
+
+<!-- TAB: ALLOCATION -->
+<div id="tab-allocation" class="tab-pane">
+  <div class="alloc-card">
+    <div class="alloc-note">⬆ Cash increased from 10% → 20% after trimming TSLA pre-open (May 17, 2026)</div>
+    <div id="alloc-bars"></div>
+  </div>
+</div>
+
+<!-- TAB: TRADE LOG -->
+<div id="tab-tradelog" class="tab-pane">
+  <div class="card">
+    <div class="tl-note">All decisions made using only publicly available information. No privileged data used. Every trade recorded with full rationale.</div>
+    <div id="trade-log-items"></div>
+    <div class="tl-footer">
+      Next decision: <span class="green">Mon May 19 — market open 9:30 AM ET</span>
+      &nbsp;·&nbsp;
+      NVDA earnings: <span class="gold">Tue May 20</span>
+    </div>
+  </div>
+</div>
+
+<!-- TAB: RULES -->
+<div id="tab-rules" class="tab-pane">
+  <div class="card rules-grid" id="rules-grid"></div>
+</div>
+
+<div class="footer">⚠ SIMULATION ONLY &nbsp;·&nbsp; NOT FINANCIAL ADVICE &nbsp;·&nbsp; PRICES FROM FINNHUB &nbsp;·&nbsp; REFRESHES EVERY 60MIN DURING MARKET HOURS (9:30AM–4PM ET, MON–FRI) &nbsp;·&nbsp; PRICES FROZEN OUTSIDE MARKET HOURS</div>
+
+<script>
+/* ════════════════════════════════════════
+   PORTFOLIO DATA — update this section
+   each time Claude makes a trade
+   ════════════════════════════════════════ */
+const TOTAL_CAPITAL = 1000;
+const CASH          = 200;
+
+const POSITIONS = [
+  {
+    ticker:"NVDA", name:"NVIDIA Corporation", sector:"AI Semiconductors",
+    color:"#76b900", allocated:250, entryPrice:228.00, shares:1.096,
+    thesis:"AI chip dominance • Earnings catalyst May 20 • ATH momentum • $5.5T market cap"
+  },
+  {
+    ticker:"PLTR", name:"Palantir Technologies", sector:"AI Software",
+    color:"#3d80ff", allocated:250, entryPrice:137.00, shares:1.825,
+    thesis:"AI platform leader • Gov + commercial momentum • Analyst target $202 • Q1 beat"
+  },
+  {
+    ticker:"TSLA", name:"Tesla Inc.", sector:"EV / Autonomy",
+    color:"#e82127", allocated:100, entryPrice:422.24, shares:0.237,
+    thesis:"TRIMMED 20%→10% — 17 public Robotaxi crashes in Austin TX weigh on sentiment"
+  },
+  {
+    ticker:"MSTR", name:"Strategy Inc.", sector:"Bitcoin Proxy",
+    color:"#f7931a", allocated:200, entryPrice:177.00, shares:1.130,
+    thesis:"Leveraged BTC exposure • Beta 2.01 • 650K+ BTC holdings • Aggressive volatility play"
+  }
+];
+
+const TRADE_LOG = [
+  {
+    date:"May 17, 2026", type:"PLAN", ticker:"ALL", color:"#3d80ff",
+    action:"Portfolio constructed — $1,000 capital allocated across 4 positions + 10% initial cash reserve."
+  },
+  {
+    date:"May 17, 2026", type:"TRIM", ticker:"TSLA", color:"#f59e0b",
+    action:"Reduced TSLA 20% → 10% ($200 → $100). Reason: 17 Robotaxi crashes reported publicly in Austin TX. Risk/reward unfavorable short-term. $100 moved to cash, raising reserve from 10% → 20%."
+  },
+  {
+    date:"May 17, 2026", type:"HOLD", ticker:"NVDA", color:"#76b900",
+    action:"Maintaining full 25% NVDA position into earnings (May 20). Aggressive stance — public sentiment bullish, ATH momentum intact."
+  },
+  {
+    date:"May 19, 2026", type:"OPEN", ticker:"ALL", color:"#00e676",
+    action:"Portfolio officially opens at market open 9:30 AM ET. Final allocation: NVDA 25% · PLTR 25% · MSTR 20% · TSLA 10% · Cash 20%."
+  }
+];
+
+const RULES = [
+  ["INVESTOR TYPE",  "Normal retail · No privileged info"],
+  ["STRATEGY",       "High-beta AI & Disruptors"],
+  ["HORIZON",        "Medium-term · 3–6 months"],
+  ["TRADING HOURS",  "9:30 AM – 4:00 PM ET only"],
+  ["WEEKENDS/HOLS",  "No trading · Markets closed"],
+  ["MAX POSITION",   "25% per single stock"],
+  ["STOP-LOSS",      "Reassess at −25% per position"],
+  ["REBALANCE",      "Monthly check-in with Claude"],
+  ["INFO SOURCES",   "Public news, earnings, SEC filings"],
+  ["EXECUTION",      "Next market open after decision"],
+  ["LEVERAGE",       "None · Cash only · $1,000 total"],
+  ["BENCHMARK",      "Outperform S&P 500 YTD"],
+];
+
+/* ════════════════════════════════════════
+   MARKET HOURS CHECK (America/New_York)
+   ════════════════════════════════════════ */
+const PORTFOLIO_OPEN_DATE = new Date("2026-05-19T09:30:00-04:00");
+
+function isMarketOpen() {
+  const now = new Date();
+  if (now < PORTFOLIO_OPEN_DATE) return false;
+  const etStr = now.toLocaleString("en-US", {
+    timeZone:"America/New_York", weekday:"short",
+    hour:"numeric", minute:"numeric", hour12:false
+  });
+  const [day, time] = etStr.split(", ");
+  const [h, m] = time.split(":").map(Number);
+  if (day === "Sat" || day === "Sun") return false;
+  const mins = h * 60 + m;
+  return mins >= 9 * 60 + 30 && mins < 16 * 60;
+}
+
+function updateMarketBadge(status) {
+  const badge = el("market-badge");
+  const dot   = el("market-dot");
+  const label = el("market-label");
+  const now   = new Date();
+  if (now < PORTFOLIO_OPEN_DATE) {
+    badge.className = "live-badge closed";
+    dot.className   = "pdot closed";
+    label.textContent = "PRE-OPEN";
+  } else if (status === "fetching") {
+    badge.className = "live-badge";
+    dot.className   = "pdot";
+    label.textContent = "UPDATING…";
+  } else if (status === "error") {
+    badge.className = "live-badge closed";
+    dot.className   = "pdot closed";
+    label.textContent = "DATA ERROR";
+  } else if (isMarketOpen()) {
+    badge.className = "live-badge";
+    dot.className   = "pdot";
+    label.textContent = "LIVE";
+  } else {
+    badge.className = "live-badge closed";
+    dot.className   = "pdot closed";
+    label.textContent = "MARKET CLOSED";
+  }
+}
+
+/* ════════════════════════════════════════
+   YAHOO FINANCE DATA FETCH
+   Tries direct first; falls back to
+   corsproxy.io if CORS blocked
+   ════════════════════════════════════════ */
+let prices       = Object.fromEntries(POSITIONS.map(p => [p.ticker, p.entryPrice]));
+let prevPrices   = { ...prices };
+let dayChangePct = Object.fromEntries(POSITIONS.map(p => [p.ticker, 0]));
+let lastFetchTime = null;
+let dataSource   = "entry"; // "entry" | "live" | "error"
+
+const FINNHUB_KEY = "d85ta91r01qm56ksm8pgd85ta91r01qm56ksm8q0";
+
+async function fetchYahooQuotes() {
+  // Fetch all tickers in parallel from Finnhub
+  try {
+    const results = await Promise.all(POSITIONS.map(async p => {
+      const url = `https://finnhub.io/api/v1/quote?symbol=${p.ticker}&token=${FINNHUB_KEY}`;
+      const r = await fetch(url, { signal: AbortSignal.timeout(8000) });
+      if (!r.ok) return null;
+      const d = await r.json();
+      if (!d.c || d.c === 0) return null; // c = current price
+      return {
+        symbol: p.ticker,
+        regularMarketPrice: d.c,
+        regularMarketChangePercent: d.dp  // dp = day change %
+      };
+    }));
+    const valid = results.filter(Boolean);
+    if (valid.length > 0) return valid;
+  } catch(_) {}
+
+  return null;
+}
+
+async function refreshPrices({ onLoad = false } = {}) {
+  // Always fetch on first page load; after that only poll during market hours
+  if (!onLoad && !isMarketOpen()) { updateMarketBadge(); return; }
+  updateMarketBadge("fetching");
+  const quotes = await fetchYahooQuotes();
+  if (quotes && quotes.length > 0) {
+    prevPrices = { ...prices };
+    quotes.forEach(q => {
+      if (q.symbol in prices) {
+        prices[q.symbol]       = q.regularMarketPrice;
+        dayChangePct[q.symbol] = q.regularMarketChangePercent || 0;
+      }
+    });
+    lastFetchTime = new Date();
+    dataSource = "live";
+    renderAll();
+    updateMarketBadge();
+  } else {
+    dataSource = "error";
+    updateMarketBadge("error");
+  }
+}
+
+/* ════════════════════════════════════════
+   HELPERS
+   ════════════════════════════════════════ */
+const f2     = n => n.toFixed(2);
+const fPct   = n => (n >= 0 ? "+" : "") + n.toFixed(2) + "%";
+const fDelta = n => (n >= 0 ? "+$" : "-$") + Math.abs(n).toFixed(2);
+const cl     = n => n >= 0 ? "green" : "red";
+
+/* ════════════════════════════════════════
+   RENDER
+   ════════════════════════════════════════ */
+function renderAll() {
+  renderSummary();
+  renderPositions();
+  renderAllocation();
+}
+
+function renderSummary() {
+  const invested = POSITIONS.reduce((s, p) => s + prices[p.ticker] * p.shares, 0);
+  const total    = invested + CASH;
+  const pnl      = total - TOTAL_CAPITAL;
+  const pnlPct   = (pnl / TOTAL_CAPITAL) * 100;
+
+  el("s-total").textContent    = "$" + f2(total);
+  el("s-total").className      = "sum-value " + cl(pnl);
+
+  el("s-pnl-abs").textContent  = fDelta(pnl);
+  el("s-pnl-abs").className    = "sum-sub " + cl(pnl);
+
+  el("s-pnl-val").textContent  = fDelta(pnl);
+  el("s-pnl-val").className    = "sum-value " + cl(pnl);
+  el("s-pnl-val").style.fontSize = "clamp(16px,3.5vw,22px)";
+
+  el("s-pnl-pct").textContent  = fPct(pnlPct);
+  el("s-pnl-pct").className    = "sum-sub " + cl(pnl);
+
+  el("s-deployed").textContent = "$" + f2(invested);
+}
+
+function renderPositions() {
+  const grid = el("pos-grid");
+  POSITIONS.forEach(p => {
+    const cur    = prices[p.ticker];
+    const prev   = prevPrices[p.ticker];
+    const val    = cur * p.shares;
+    const pnl    = (cur - p.entryPrice) * p.shares;
+    const pnlPct = ((cur - p.entryPrice) / p.entryPrice) * 100;
+    const isUp   = pnl >= 0;
+    const c      = isUp ? "#00e676" : "#ff3b30";
+    const allPct = ((p.allocated / TOTAL_CAPITAL) * 100).toFixed(0);
+
+    let card = document.getElementById("card-" + p.ticker);
+    if (!card) {
+      card = document.createElement("div");
+      card.className = "pos-card";
+      card.id = "card-" + p.ticker;
+      card.innerHTML = `
+        <div class="pos-flash" id="flash-${p.ticker}"></div>
+        <div class="pos-top">
+          <div>
+            <div class="ticker" id="tk-${p.ticker}" style="color:${p.color}">${p.ticker}</div>
+            <div class="pos-name">${p.name}</div>
+          </div>
+          <div>
+            <div class="cur-price" id="cp-${p.ticker}"></div>
+            <div class="cur-pct"   id="cpct-${p.ticker}"></div>
+          </div>
+        </div>
+        <div class="badge-row">
+          <span class="badge">${p.sector}</span>
+          <span class="badge" id="ba-${p.ticker}" style="color:${p.color};border-color:${p.color}">${allPct}% of portfolio</span>
+        </div>
+        <div class="stats-row">
+          <div><div class="stat-label">SHARES</div><div class="stat-val">${p.shares.toFixed(3)}</div></div>
+          <div><div class="stat-label">ENTRY</div><div class="stat-val">$${f2(p.entryPrice)}</div></div>
+          <div><div class="stat-label">VALUE</div><div class="stat-val" id="sv-${p.ticker}"></div></div>
+          <div><div class="stat-label">P&amp;L</div><div class="stat-val" id="sp-${p.ticker}"></div></div>
+        </div>
+        <div class="thesis">${p.thesis}</div>
+      `;
+      grid.appendChild(card);
+    }
+
+    const dayPct  = dayChangePct[p.ticker] || 0;
+    const dayUp   = dayPct >= 0;
+    el("cp-"+p.ticker).textContent  = "$" + f2(cur);
+    el("cp-"+p.ticker).style.color  = c;
+    // Show today's day change % (from Yahoo) in the top-right; P&L vs entry is in stats row
+    el("cpct-"+p.ticker).textContent = (dataSource === "live")
+      ? (dayUp ? "▲ " : "▼ ") + Math.abs(dayPct).toFixed(2) + "% today"
+      : (isUp  ? "▲ " : "▼ ") + Math.abs(pnlPct).toFixed(2) + "% vs entry";
+    el("cpct-"+p.ticker).style.color = (dataSource === "live") ? (dayUp ? "#00e676" : "#ff3b30") : c;
+    el("sv-"+p.ticker).textContent  = "$" + f2(val);
+    el("sp-"+p.ticker).textContent  = fDelta(pnl);
+    el("sp-"+p.ticker).style.color  = c;
+
+    // Flash on price change
+    const flashEl = el("flash-"+p.ticker);
+    if (cur !== prev) {
+      flashEl.style.background = cur > prev ? "rgba(0,230,118,0.09)" : "rgba(255,59,48,0.09)";
+      setTimeout(() => { flashEl.style.background = "transparent"; }, 600);
+    }
+  });
+}
+
+function renderAllocation() {
+  const bars = el("alloc-bars");
+  if (bars.children.length > 0) return; // already rendered (bars are static)
+
+  const all = [...POSITIONS, { ticker:"CASH", color:"#3a4a6a", allocated: CASH }];
+  all.forEach(p => {
+    const pct = ((p.allocated / TOTAL_CAPITAL) * 100).toFixed(0);
+    const row = document.createElement("div");
+    row.className = "alloc-row";
+    row.innerHTML = `
+      <span class="alloc-ticker" style="color:${p.color}">${p.ticker}</span>
+      <div class="bar-track"><div class="bar-fill" data-w="${pct}" style="background:${p.color}"></div></div>
+      <span class="alloc-pct">${pct}%</span>
+      <span class="alloc-amt">$${p.allocated}</span>
+    `;
+    bars.appendChild(row);
+  });
+  // Animate bars
+  setTimeout(() => {
+    document.querySelectorAll(".bar-fill").forEach(b => {
+      b.style.width = b.dataset.w + "%";
+    });
+  }, 100);
+}
+
+function renderTradeLog() {
+  const container = el("trade-log-items");
+  if (container.children.length > 0) return;
+  [...TRADE_LOG].reverse().forEach(t => {
+    const row = document.createElement("div");
+    row.className = "tl-row";
+    row.style.borderLeftColor = t.color;
+    row.innerHTML = `
+      <div class="tl-top">
+        <span class="tl-type" style="color:${t.color}">${t.type}</span>
+        <span class="tl-ticker">${t.ticker}</span>
+        <span class="tl-date">${t.date}</span>
+      </div>
+      <div class="tl-action">${t.action}</div>
+    `;
+    container.appendChild(row);
+  });
+}
+
+function renderRules() {
+  const grid = el("rules-grid");
+  if (grid.children.length > 0) return;
+  RULES.forEach(([k,v]) => {
+    const item = document.createElement("div");
+    item.className = "rule-item";
+    item.innerHTML = `<div class="rule-key">${k}</div><div class="rule-val">${v}</div>`;
+    grid.appendChild(item);
+  });
+}
+
+/* ════════════════════════════════════════
+   TAB SWITCHING
+   ════════════════════════════════════════ */
+function switchTab(name) {
+  document.querySelectorAll(".tab-pane").forEach(p => p.classList.remove("active"));
+  document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+  el("tab-"+name).classList.add("active");
+  event.target.classList.add("active");
+  if (name === "tradelog") renderTradeLog();
+  if (name === "rules")    renderRules();
+}
+
+/* ════════════════════════════════════════
+   INIT
+   ════════════════════════════════════════ */
+function el(id) { return document.getElementById(id); }
+
+renderAll();
+updateMarketBadge();
+refreshPrices({ onLoad: true });     // always fetch on load regardless of market hours
+setInterval(refreshPrices, 3600000); // re-fetch every 60min (only runs during market hours)
+</script>
+</body>
+</html>
